@@ -1,0 +1,190 @@
+/* @import "tw-animate-css"; */
+
+@custom-variant dark (&:is(.dark *));
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* =========================
+   THEME VARIABLES
+   ========================= */
+@layer base {
+  :root {
+    /* Light theme */
+    --background: 180 20% 99%;
+    --foreground: 200 8% 24%;
+
+    --card: 180 20% 99%;
+    --card-foreground: 200 8% 24%;
+
+    --primary: 150 30% 60%;
+    --primary-foreground: 150 40% 16%;
+
+    --secondary: 250 20% 96%;
+    --secondary-foreground: 250 10% 30%;
+
+    --muted: 210 20% 96%;
+    --muted-foreground: 215 16% 45%;
+
+    --accent: 180 25% 95%;
+    --accent-foreground: 200 8% 24%;
+
+    --destructive: 0 84% 60%;
+
+    --border: 200 10% 90%;
+    --ring: 150 30% 60%;
+
+    --radius: 0.75rem;
+  }
+
+  .dark {
+    /* Dark theme */
+    --background: 200 50% 3%;
+    --foreground: 210 20% 98%;
+
+    --card: 200 50% 3%;
+    --card-foreground: 210 20% 98%;
+
+    --primary: 150 30% 70%;
+    --secondary: 250 20% 20%;
+
+    --muted: 200 50% 10%;
+    --accent: 200 50% 10%;
+
+    --border: 200 50% 10%;
+    --ring: 150 30% 70%;
+  }
+}
+
+/* =========================
+   BASE STYLES
+   ========================= */
+@layer base {
+  body {
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    font-feature-settings:
+      "rlig" 1,
+      "calt" 1;
+  }
+
+  * {
+    border-color: hsl(var(--border));
+  }
+}
+
+/* =========================
+   INTERACTIONS
+   ========================= */
+.hover-lift {
+  transition: transform 0.2s ease;
+}
+
+.hover-lift:hover {
+  transform: translateY(-4px);
+}
+
+.gentle-shadow {
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.1);
+}
+
+/* =========================
+   ANIMATIONS
+   ========================= */
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-20px);
+  }
+}
+
+@keyframes wave {
+  0%,
+  100% {
+    transform: rotate(-5deg);
+  }
+  50% {
+    transform: rotate(5deg);
+  }
+}
+
+@keyframes scroll {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(8px);
+  }
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+.animate-wave {
+  animation: wave 2s ease-in-out infinite;
+}
+
+.animate-scroll {
+  animation: scroll 2s ease-in-out infinite;
+}
+
+@keyframes pulse-gentle {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.animate-pulse-gentle {
+  animation: pulse-gentle 2s ease-in-out infinite;
+}
+
+/* =========================
+   UTILITIES
+   ========================= */
+@layer utilities {
+  .bg-size-200 {
+    background-size: 200% 100%;
+  }
+
+  .bg-pos-0 {
+    background-position: 0% 0%;
+  }
+
+  .bg-pos-100 {
+    background-position: 100% 0%;
+  }
+}
+
+@theme inline {
+  --animate-ripple: ripple var(--duration, 2s) ease calc(var(--i, 0) * 0.2s)
+    infinite;
+  @keyframes ripple {
+    0%,
+    100% {
+      transform: translate(-50%, -50%) scale(1);
+    }
+    50% {
+      transform: translate(-50%, -50%) scale(0.9);
+    }
+  }
+}
+
+@layer base {
+  * {
+    border-color: hsl(var(--border));
+    transition:
+      color 200ms,
+      background-color 200ms,
+      border-color 200ms;
+  }
+}
