@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Bell, Trophy, Brain, Activity, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -33,6 +34,8 @@ import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 
 export default function DashboardPage() {
+  const router = useRouter();
+
   const wellnessStats = [
     {
       title: "Mood Score",
@@ -100,6 +103,10 @@ export default function DashboardPage() {
     setShowActivityLogger(true);
   };
 
+  const handleStartTherapy = () => {
+    router.push("/therapy/new");
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Container className="pt-20 pb-8 space-y-6">
@@ -157,7 +164,7 @@ export default function DashboardPage() {
                         "bg-gradient-to-r from-primary/90 to-primary hover:from-primary hover:to-primary/90",
                         "transition-all duration-200 group-hover:translate-y-[-2px]",
                       )}
-                      // onClick={handleStartTherapy}
+                      onClick={handleStartTherapy}
                     >
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
