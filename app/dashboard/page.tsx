@@ -27,6 +27,8 @@ import {
   BrainCircuit,
 } from "lucide-react";
 import { AnxietyGames } from "@/components/games/anxiety-games";
+import { ActivityLogger } from "@/components/activities/activity-logger";
+import { MoodForm } from "@/components/mood/mood-form";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 
@@ -67,7 +69,9 @@ export default function DashboardPage() {
   ];
 
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [isSavingMood, setIsSavingMood] = useState(false);
   const [showMoodModal, setShowMoodModal] = useState(false);
+  const [showActivityLogger, setShowActivityLogger] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -75,6 +79,26 @@ export default function DashboardPage() {
     }, 1000);
     return () => clearInterval(timer);
   }, []);
+
+  const handleMoodSubmit = async (data: { moodScore: number }) => {
+    setIsSavingMood(true);
+    try {
+      // await saveMoodData({
+      //   userId: "default-user",
+      //   mood: data.moodScore,
+      //   note: "",
+      // });
+      setShowMoodModal(false);
+    } catch (error) {
+      console.error("Error saving mood:", error);
+    } finally {
+      setIsSavingMood(false);
+    }
+  };
+
+  const handleAICheckIn = () => {
+    setShowActivityLogger(true);
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -161,7 +185,7 @@ export default function DashboardPage() {
                           "justify-center items-center text-center",
                           "transition-all duration-200 group-hover:translate-y-[-2px]",
                         )}
-                        // onClick={() => setShowMoodModal(true)}
+                        onClick={() => setShowMoodModal(true)}
                       >
                         <div className="w-10 h-10 rounded-full bg-rose-500/10 flex items-center justify-center mb-2">
                           <Heart className="w-5 h-5 text-rose-500" />
@@ -181,7 +205,7 @@ export default function DashboardPage() {
                           "justify-center items-center text-center",
                           "transition-all duration-200 group-hover:translate-y-[-2px]",
                         )}
-                        // onClick={handleAICheckIn}
+                        onClick={handleAICheckIn}
                       >
                         <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center mb-2">
                           <BrainCircuit className="w-5 h-5 text-blue-500" />
@@ -262,16 +286,22 @@ export default function DashboardPage() {
 
       {/* Mood tracking modal */}
       <Dialog open={showMoodModal} onOpenChange={setShowMoodModal}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-[425px] bg-white dark:bg-black text-black dark:text-white border border-black/10 dark:border-white/10 shadow-xl">
           <DialogHeader>
             <DialogTitle>How are you feeling?</DialogTitle>
             <DialogDescription>
               Move the slider to track your current mood
             </DialogDescription>
           </DialogHeader>
-          {/* <MoodForm onSuccess={() => setShowMoodModal(false)} /> */}
+          <MoodForm onSuccess={() => setShowMoodModal(false)} />
         </DialogContent>
       </Dialog>
+
+      <ActivityLogger
+        open={showActivityLogger}
+        onOpenChange={setShowActivityLogger}
+        // onActivityLogged={loadActivities}
+      />
     </div>
   );
 }
