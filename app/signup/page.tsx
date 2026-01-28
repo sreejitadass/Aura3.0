@@ -28,7 +28,7 @@ export default function SignupPage() {
     }
     setLoading(true);
     try {
-      await registerUser(name, email, password);
+      // await registerUser(name, email, password);
       router.push("/login");
     } catch (err: any) {
       setError(err.message || "Signup failed. Please try again.");
