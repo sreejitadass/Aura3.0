@@ -1,8 +1,8 @@
+import "./../config/env";
 import mongoose from "mongoose";
 import { logger } from "./logger";
 
-const MONGODB_URI =
-  "mongodb+srv://sreejitadas_db:SREEJITA321@cluster-ai-therapy.v7sgwap.mongodb.net/";
+const MONGODB_URI = process.env.MONGODB_URI;
 
 export const connectDB = async () => {
   try {

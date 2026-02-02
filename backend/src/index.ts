@@ -11,6 +11,9 @@ import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
 import authRoutes from "./routes/auth";
+import chatRoutes from "./routes/chat";
+import moodRoutes from "./routes/mood";
+import activityRoutes from "./routes/activity";
 
 dotenv.config();
 
@@ -31,6 +34,9 @@ app.use(
 
 // Routes
 app.use("/auth", authRoutes);
+app.use("/chats", chatRoutes);
+app.use("/api/mood", moodRoutes);
+app.use("/api/activity", activityRoutes);
 
 // Error handler
 app.use(errorHandler);
