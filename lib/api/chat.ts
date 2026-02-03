@@ -40,9 +40,7 @@ export interface ApiResponse {
   };
 }
 
-const API_BASE =
-  process.env.BACKEND_API_URL ||
-  "https://ai-therapist-agent-backend.onrender.com";
+const CHAT_API_BASE = "/api";
 
 // Helper function to get auth headers
 const getAuthHeaders = () => {
@@ -56,7 +54,7 @@ const getAuthHeaders = () => {
 export const createChatSession = async (): Promise<string> => {
   try {
     console.log("Creating new chat session...");
-    const response = await fetch(`${API_BASE}/chat/sessions`, {
+    const response = await fetch(`${CHAT_API_BASE}/chat/sessions`, {
       method: "POST",
       headers: getAuthHeaders(),
     });
@@ -83,7 +81,7 @@ export const sendChatMessage = async (
   try {
     console.log(`Sending message to session ${sessionId}:`, message);
     const response = await fetch(
-      `${API_BASE}/chat/sessions/${sessionId}/messages`,
+      `${CHAT_API_BASE}/chat/sessions/${sessionId}/messages`,
       {
         method: "POST",
         headers: getAuthHeaders(),
@@ -112,7 +110,7 @@ export const getChatHistory = async (
   try {
     console.log(`Fetching chat history for session ${sessionId}`);
     const response = await fetch(
-      `${API_BASE}/chat/sessions/${sessionId}/history`,
+      `${CHAT_API_BASE}/chat/sessions/${sessionId}/history`,
       {
         headers: getAuthHeaders(),
       },
@@ -148,7 +146,7 @@ export const getChatHistory = async (
 export const getAllChatSessions = async (): Promise<ChatSession[]> => {
   try {
     console.log("Fetching all chat sessions...");
-    const response = await fetch(`${API_BASE}/chat/sessions`, {
+    const response = await fetch(`${CHAT_API_BASE}/chat/sessions`, {
       headers: getAuthHeaders(),
     });
 

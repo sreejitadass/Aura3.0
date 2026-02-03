@@ -2,64 +2,63 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-// import { loginUser } from "@/lib/api/auth";
+import { loginUser } from "@/lib/api/auth";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Container } from "@/components/ui/container";
 import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import { Lock, Mail } from "lucide-react";
-// import { useSession } from "@/lib/contexts/session-context";
+import { useSession } from "@/lib/contexts/session-context";
 
 export default function LoginPage() {
   const router = useRouter();
-  //   const { checkSession } = useSession();
+  const { checkSession } = useSession();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  //   const handleSubmit = async (e: React.FormEvent) => {
-  //     e.preventDefault();
-  //     setLoading(true);
-  //     setError("");
-  //     try {
-  //       const response = await loginUser(email, password);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+    try {
+      const response = await loginUser(email, password);
 
-  //       // Store the token in localStorage
-  //       localStorage.setItem("token", response.token);
+      // Store the token in localStorage
+      localStorage.setItem("token", response.token);
 
-  //       // Update session state
-  //       await checkSession();
+      // Update session state
+      await checkSession();
 
-  //       // Wait for state to update before redirecting
-  //       await new Promise((resolve) => setTimeout(resolve, 100));
-  //       router.push("/dashboard");
-  //     } catch (err) {
-  //       setError(
-  //         err instanceof Error
-  //           ? err.message
-  //           : "Invalid email or password. Please try again.",
-  //       );
-  //     } finally {
-  //       setLoading(false);
-  //     }
-  //   };
+      // Wait for state to update before redirecting
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      router.push("/dashboard");
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Invalid email or password. Please try again.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-primary/10 via-background to-secondary/30">
       <Container className="flex flex-col items-center justify-center w-full">
         <Card className="w-full md:w-5/12 max-w-2xl p-8 md:p-10 rounded-3xl shadow-2xl border border-primary/10 bg-card/90 backdrop-blur-lg mt-12">
           <div className="mb-6 text-center">
-            <h1 className="text-2xl md:text-3xl font-extrabold bg-gradient-to-r from-[#7fbfb0] to-[#6fb3a2] bg-clip-text text-transparent mb-1 tracking-tight">
+            <h1 className="text-2xl md:text-3xl font-extrabold bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent mb-1 tracking-tight">
               Sign In
             </h1>
-
             <p className="text-base text-muted-foreground font-medium">
               Welcome back! Please sign in to continue your journey.
             </p>
           </div>
-          <form className="space-y-6">
+          <form className="space-y-6" onSubmit={handleSubmit}>
             <div className="space-y-3">
               <div>
                 <label

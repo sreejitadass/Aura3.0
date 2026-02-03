@@ -4,8 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Loader2 } from "lucide-react";
-// import { useToast } from "@/components/ui/use-toast";
-// import { useSession } from "@/lib/contexts/session-context";
+import { useSession } from "@/lib/contexts/session-context";
 import { useRouter } from "next/navigation";
 
 interface MoodFormProps {
@@ -15,8 +14,7 @@ interface MoodFormProps {
 export function MoodForm({ onSuccess }: MoodFormProps) {
   const [moodScore, setMoodScore] = useState(50);
   const [isLoading, setIsLoading] = useState(false);
-  //   const { toast } = useToast();
-  //   const { user, isAuthenticated, loading } = useSession();
+  const { user, isAuthenticated, loading } = useSession();
   const router = useRouter();
 
   const emotions = [
@@ -26,6 +24,46 @@ export function MoodForm({ onSuccess }: MoodFormProps) {
     { value: 75, label: "😃", description: "Good" },
     { value: 100, label: "🤗", description: "Great" },
   ];
+
+  const handleSubmit = async () => {
+    console.log("MoodForm: Starting submission");
+    console.log("MoodForm: Auth state:", { isAuthenticated, loading, user });
+
+    if (!isAuthenticated) {
+      alert("Please log in to save your mood.");
+      router.push("/login");
+      return;
+    }
+    try {
+      setIsLoading(true);
+      const token = localStorage.getItem("token");
+
+      const response = await fetch("http://localhost:3001/api/mood", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ score: moodScore }),
+      });
+
+      console.log("MoodForm: Response status:", response.status);
+
+      if (!response.ok) {
+        const error = await response.json();
+        console.error("MoodForm: Error response:", error);
+        throw new Error(error.error || "Failed to track mood");
+      }
+
+      const data = await response.json();
+      alert("Mood saved successfully!");
+      onSuccess?.();
+    } catch (err: any) {
+      alert(err.message || "Failed to save mood. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const currentEmotion =
     emotions.find((em) => Math.abs(moodScore - em.value) < 15) || emotions[2];
@@ -67,7 +105,13 @@ export function MoodForm({ onSuccess }: MoodFormProps) {
         />
       </div>
       Submit button
-      <Button className="w-full">"Save Mood"</Button>
+      <Button
+        onClick={handleSubmit}
+        disabled={isLoading || loading}
+        className="w-full"
+      >
+        {isLoading || loading ? "Saving..." : "Save Mood"}
+      </Button>
     </div>
   );
 }

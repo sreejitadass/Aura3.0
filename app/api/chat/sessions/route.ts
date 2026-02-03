@@ -1,39 +1,35 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
+import { randomUUID } from "crypto";
 
-const BACKEND_API_URL = process.env.BACKEND_API_URL || "http://localhost:3001";
-
-export async function POST(req: NextRequest) {
+// GET all chat sessions
+export async function GET() {
   try {
-    console.log("Creating new chat session...");
-    const authHeader = req.headers.get("Authorization");
+    // For now, return empty list
+    // (later you can fetch from DB)
+    return NextResponse.json([], { status: 200 });
+  } catch (error) {
+    console.error("Error fetching chat sessions:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch chat sessions" },
+      { status: 500 },
+    );
+  }
+}
 
-    if (!authHeader) {
-      return NextResponse.json(
-        { error: "Authorization header is required" },
-        { status: 401 },
-      );
-    }
+// POST create new chat session
+export async function POST() {
+  try {
+    const sessionId = randomUUID();
 
-    const response = await fetch(`${BACKEND_API_URL}/chat/sessions`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: authHeader,
+    return NextResponse.json(
+      {
+        sessionId,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        messages: [],
       },
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      console.error("Failed to create chat session:", error);
-      return NextResponse.json(
-        { error: error.error || "Failed to create chat session" },
-        { status: response.status },
-      );
-    }
-
-    const data = await response.json();
-    console.log("Chat session created:", data);
-    return NextResponse.json(data);
+      { status: 201 },
+    );
   } catch (error) {
     console.error("Error creating chat session:", error);
     return NextResponse.json(

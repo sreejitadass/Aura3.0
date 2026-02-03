@@ -29,12 +29,14 @@ import {
 } from "lucide-react";
 import { AnxietyGames } from "@/components/games/anxiety-games";
 import { ActivityLogger } from "@/components/activities/activity-logger";
+import { useSession } from "@/lib/contexts/session-context";
 import { MoodForm } from "@/components/mood/mood-form";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 
 export default function DashboardPage() {
   const router = useRouter();
+  const { user } = useSession();
 
   const wellnessStats = [
     {
@@ -118,7 +120,7 @@ export default function DashboardPage() {
             className="space-y-2"
           >
             <h1 className="text-3xl font-bold text-foreground">
-              Welcome back, USER
+              Welcome back, {user?.name || "there"}
             </h1>
             <p className="text-muted-foreground">
               {currentTime.toLocaleDateString("en-US", {
