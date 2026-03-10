@@ -257,7 +257,11 @@ export default function TherapyPage() {
 
       console.log("Sending message to API...");
       // Send message to API
-      const response = await sendChatMessage(sessionId, currentMessage);
+      const response = await sendChatMessage(
+        sessionId,
+        currentMessage,
+        messages,
+      );
       console.log("Raw API response:", response);
 
       // Parse the response if it's a string

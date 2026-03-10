@@ -2,33 +2,65 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(
   req: NextRequest,
-  context: { params: { sessionId: string } },
+  context: { params: Promise<{ sessionId: string }> },
 ) {
   try {
-    const { sessionId } = context.params;
-    const body = await req.json();
-    const { message } = body;
+    const { sessionId } = await context.params;
+    const { message, history = [] } = await req.json();
 
     if (!message) {
-      return NextResponse.json(
-        { error: "Message is required" },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: "Message required" }, { status: 400 });
     }
 
-    console.log("Session:", sessionId);
-    console.log("User message:", message);
+    // Convert chat history into text
+    const formattedHistory = history
+      .slice(-10) // keep last 10 messages
+      .map((m: any) => `${m.role === "user" ? "User" : "AI"}: ${m.content}`)
+      .join("\n");
 
-    // ✅ TEMP AI RESPONSE (no DB, no Gemini)
-    return NextResponse.json({
-      response: "I hear you. Tell me more about how you're feeling.",
-      analysis: {
-        emotionalState: "neutral",
-        themes: [],
-        riskLevel: 0,
-        recommendedApproach: "supportive",
-        progressIndicators: [],
+    const prompt = `
+You are an empathetic AI therapist designed to support users emotionally.
+
+Your goals:
+- listen carefully
+- validate the user's feelings
+- ask gentle reflective questions
+- encourage healthy coping strategies
+
+Rules:
+- respond in a calm and supportive tone
+- avoid judgement
+- do not diagnose medical conditions
+- keep responses 2-5 sentences
+- ask thoughtful follow-up questions when appropriate
+
+Conversation so far:
+${formattedHistory}
+
+User: ${message}
+AI:
+`;
+
+    const response = await fetch("http://localhost:11434/api/generate", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
       },
+      body: JSON.stringify({
+        model: "llama3.2",
+        prompt,
+        stream: false,
+      }),
+    });
+
+    const data = await response.json();
+
+    const text =
+      data.response ||
+      "I'm here to listen. Tell me more about what you're experiencing.";
+
+    return NextResponse.json({
+      response: text,
       metadata: {
         technique: "supportive",
         goal: "Provide emotional support",
@@ -36,10 +68,11 @@ export async function POST(
       },
     });
   } catch (error) {
-    console.error("Message route error:", error);
-    return NextResponse.json(
-      { error: "Failed to send message" },
-      { status: 500 },
-    );
+    console.error("Chat error:", error);
+
+    return NextResponse.json({
+      response:
+        "I'm sorry — I'm having trouble responding right now. Please try again.",
+    });
   }
 }

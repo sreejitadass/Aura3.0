@@ -1,24 +1,13 @@
 import { Request, Response } from "express";
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import { v4 as uuidv4 } from "uuid";
 import { logger } from "../utils/logger";
-import { inngest } from "../inngest/index";
 import { User } from "../models/User";
-import { ChatSession, IChatSession } from "../models/ChatSession";
-import { InngestSessionResponse, InngestEvent } from "../types/inngest";
-
+import { ChatSession } from "../models/ChatSession";
 import { Types } from "mongoose";
 
-// 🔐 Initialize Gemini (NO hardcoded key)
-const apiKey = process.env.GEMINI_API_KEY;
-if (!apiKey) {
-  throw new Error("GEMINI_API_KEY not defined");
-}
-const genAI = new GoogleGenerativeAI(apiKey);
-
+// Create chat session
 export const createChatSession = async (req: Request, res: Response) => {
   try {
-    // Check if user is authenticated
     if (!req.user || !req.user.id) {
       return res
         .status(401)
@@ -32,7 +21,6 @@ export const createChatSession = async (req: Request, res: Response) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // Generate a unique sessionId
     const sessionId = uuidv4();
 
     const session = new ChatSession({
@@ -47,217 +35,126 @@ export const createChatSession = async (req: Request, res: Response) => {
 
     res.status(201).json({
       message: "Chat session created successfully",
-      sessionId: session.sessionId,
+      sessionId,
     });
   } catch (error) {
     logger.error("Error creating chat session:", error);
     res.status(500).json({
       message: "Error creating chat session",
-      error: error instanceof Error ? error.message : "Unknown error",
     });
   }
 };
 
-// Send a message in the chat session
+// Send message
 export const sendMessage = async (req: Request, res: Response) => {
   try {
     const { sessionId } = req.params;
     const { message } = req.body;
+
     const userId = new Types.ObjectId(req.user.id);
 
     logger.info("Processing message:", { sessionId, message });
 
-    // Find session by sessionId
     const session = await ChatSession.findOne({ sessionId });
+
     if (!session) {
-      logger.warn("Session not found:", { sessionId });
       return res.status(404).json({ message: "Session not found" });
     }
 
     if (session.userId.toString() !== userId.toString()) {
-      logger.warn("Unauthorized access attempt:", { sessionId, userId });
       return res.status(403).json({ message: "Unauthorized" });
     }
 
-    // Create Inngest event for message processing
-    const event: InngestEvent = {
-      name: "therapy/session.message",
-      data: {
-        message,
-        history: session.messages,
-        memory: {
-          userProfile: {
-            emotionalState: [],
-            riskLevel: 0,
-            preferences: {},
-          },
-          sessionContext: {
-            conversationThemes: [],
-            currentTechnique: null,
-          },
-        },
-        goals: [],
-        systemPrompt: `You are an AI therapist assistant. Your role is to:
-        1. Provide empathetic and supportive responses
-        2. Use evidence-based therapeutic techniques
-        3. Maintain professional boundaries
-        4. Monitor for risk factors
-        5. Guide users toward their therapeutic goals`,
-      },
-    };
-
-    logger.info("Sending message to Inngest:", { event });
-
-    // Send event to Inngest for logging and analytics
-    await inngest.send(event);
-
-    // Process the message directly using Gemini
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-
-    // Analyze the message
-    const analysisPrompt = `Analyze this therapy message and provide insights. Return ONLY a valid JSON object with no markdown formatting or additional text.
-    Message: ${message}
-    Context: ${JSON.stringify({
-      memory: event.data.memory,
-      goals: event.data.goals,
-    })}
-    
-    Required JSON structure:
-    {
-      "emotionalState": "string",
-      "themes": ["string"],
-      "riskLevel": number,
-      "recommendedApproach": "string",
-      "progressIndicators": ["string"]
-    }`;
-
-    const analysisResult = await model.generateContent(analysisPrompt);
-    const analysisText = analysisResult.response.text().trim();
-    const cleanAnalysisText = analysisText
-      .replace(/```json\n|\n```/g, "")
-      .trim();
-    const analysis = JSON.parse(cleanAnalysisText);
-
-    logger.info("Message analysis:", analysis);
-
-    // Generate therapeutic response
-    const responsePrompt = `${event.data.systemPrompt}
-    
-    Based on the following context, generate a therapeutic response:
-    Message: ${message}
-    Analysis: ${JSON.stringify(analysis)}
-    Memory: ${JSON.stringify(event.data.memory)}
-    Goals: ${JSON.stringify(event.data.goals)}
-    
-    Provide a response that:
-    1. Addresses the immediate emotional needs
-    2. Uses appropriate therapeutic techniques
-    3. Shows empathy and understanding
-    4. Maintains professional boundaries
-    5. Considers safety and well-being`;
-
-    const responseResult = await model.generateContent(responsePrompt);
-    const response = responseResult.response.text().trim();
-
-    logger.info("Generated response:", response);
-
-    // Add message to session history
+    // Save user message
     session.messages.push({
       role: "user",
       content: message,
       timestamp: new Date(),
     });
 
+    // Prepare conversation history
+    const history = session.messages
+      .slice(-10)
+      .map((m) => `${m.role === "user" ? "User" : "AI"}: ${m.content}`)
+      .join("\n");
+
+    const prompt = `
+You are a calm, empathetic AI therapist.
+
+Your goals:
+- listen carefully
+- validate the user's feelings
+- ask gentle reflective questions
+- encourage healthy coping strategies
+
+Conversation so far:
+${history}
+
+User: ${message}
+AI:
+`;
+
+    // Call Ollama
+    const response = await fetch("http://localhost:11434/api/generate", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "llama3.2",
+        prompt,
+        stream: false,
+      }),
+    });
+
+    const data = await response.json();
+
+    const aiResponse =
+      data.response ||
+      "I'm here to listen. Tell me more about how you're feeling.";
+
+    logger.info("AI response:", aiResponse);
+
+    // Save AI message
     session.messages.push({
       role: "assistant",
-      content: response,
+      content: aiResponse,
       timestamp: new Date(),
       metadata: {
-        analysis,
         progress: {
-          emotionalState: analysis.emotionalState,
-          riskLevel: analysis.riskLevel,
+          emotionalState: "unknown",
+          riskLevel: 0,
         },
       },
     });
 
-    // Save the updated session
     await session.save();
-    logger.info("Session updated successfully:", { sessionId });
 
-    // Return the response
     res.json({
-      response,
-      message: response,
-      analysis,
+      response: aiResponse,
       metadata: {
-        progress: {
-          emotionalState: analysis.emotionalState,
-          riskLevel: analysis.riskLevel,
-        },
+        technique: "supportive",
+        goal: "Provide emotional support",
+        progress: [],
       },
     });
   } catch (error) {
     logger.error("Error in sendMessage:", error);
+
     res.status(500).json({
       message: "Error processing message",
-      error: error instanceof Error ? error.message : "Unknown error",
     });
   }
 };
 
-// Get chat session history
-export const getSessionHistory = async (req: Request, res: Response) => {
-  try {
-    const { sessionId } = req.params;
-    const userId = new Types.ObjectId(req.user.id);
-
-    const session = (await ChatSession.findById(
-      sessionId,
-    ).exec()) as IChatSession;
-    if (!session) {
-      return res.status(404).json({ message: "Session not found" });
-    }
-
-    if (session.userId.toString() !== userId.toString()) {
-      return res.status(403).json({ message: "Unauthorized" });
-    }
-
-    res.json({
-      messages: session.messages,
-      startTime: session.startTime,
-      status: session.status,
-    });
-  } catch (error) {
-    logger.error("Error fetching session history:", error);
-    res.status(500).json({ message: "Error fetching session history" });
-  }
-};
-
-export const getChatSession = async (req: Request, res: Response) => {
-  try {
-    const { sessionId } = req.params;
-    logger.info(`Getting chat session: ${sessionId}`);
-    const chatSession = await ChatSession.findOne({ sessionId });
-    if (!chatSession) {
-      logger.warn(`Chat session not found: ${sessionId}`);
-      return res.status(404).json({ error: "Chat session not found" });
-    }
-    logger.info(`Found chat session: ${sessionId}`);
-    res.json(chatSession);
-  } catch (error) {
-    logger.error("Failed to get chat session:", error);
-    res.status(500).json({ error: "Failed to get chat session" });
-  }
-};
-
+// Get chat history
 export const getChatHistory = async (req: Request, res: Response) => {
   try {
     const { sessionId } = req.params;
     const userId = new Types.ObjectId(req.user.id);
 
-    // Find session by sessionId instead of _id
     const session = await ChatSession.findOne({ sessionId });
+
     if (!session) {
       return res.status(404).json({ message: "Session not found" });
     }
@@ -270,5 +167,23 @@ export const getChatHistory = async (req: Request, res: Response) => {
   } catch (error) {
     logger.error("Error fetching chat history:", error);
     res.status(500).json({ message: "Error fetching chat history" });
+  }
+};
+
+// Get single session
+export const getChatSession = async (req: Request, res: Response) => {
+  try {
+    const { sessionId } = req.params;
+
+    const session = await ChatSession.findOne({ sessionId });
+
+    if (!session) {
+      return res.status(404).json({ error: "Chat session not found" });
+    }
+
+    res.json(session);
+  } catch (error) {
+    logger.error("Failed to get chat session:", error);
+    res.status(500).json({ error: "Failed to get chat session" });
   }
 };

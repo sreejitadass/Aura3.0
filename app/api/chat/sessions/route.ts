@@ -1,25 +1,8 @@
-import { NextResponse } from "next/server";
-import { randomUUID } from "crypto";
+import { NextRequest, NextResponse } from "next/server";
 
-// GET all chat sessions
-export async function GET() {
+export async function POST(req: NextRequest) {
   try {
-    // For now, return empty list
-    // (later you can fetch from DB)
-    return NextResponse.json([], { status: 200 });
-  } catch (error) {
-    console.error("Error fetching chat sessions:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch chat sessions" },
-      { status: 500 },
-    );
-  }
-}
-
-// POST create new chat session
-export async function POST() {
-  try {
-    const sessionId = randomUUID();
+    const sessionId = crypto.randomUUID();
 
     return NextResponse.json(
       {
@@ -32,6 +15,7 @@ export async function POST() {
     );
   } catch (error) {
     console.error("Error creating chat session:", error);
+
     return NextResponse.json(
       { error: "Failed to create chat session" },
       { status: 500 },

@@ -3,9 +3,9 @@ export interface ChatMessage {
   content: string;
   timestamp: Date;
   metadata?: {
-    technique: string;
-    goal: string;
-    progress: any[];
+    technique?: string;
+    goal?: string;
+    progress?: any[];
     analysis?: {
       emotionalState: string;
       themes: string[];
@@ -24,7 +24,7 @@ export interface ChatSession {
 }
 
 export interface ApiResponse {
-  message: string;
+  message?: string;
   response?: string;
   analysis?: {
     emotionalState: string;
@@ -34,9 +34,9 @@ export interface ApiResponse {
     progressIndicators: string[];
   };
   metadata?: {
-    technique: string;
-    goal: string;
-    progress: any[];
+    technique?: string;
+    goal?: string;
+    progress?: any[];
   };
 }
 
@@ -45,6 +45,7 @@ const CHAT_API_BASE = "/api";
 // Helper function to get auth headers
 const getAuthHeaders = () => {
   const token = localStorage.getItem("token");
+
   return {
     "Content-Type": "application/json",
     Authorization: token ? `Bearer ${token}` : "",
@@ -54,53 +55,68 @@ const getAuthHeaders = () => {
 export const createChatSession = async (): Promise<string> => {
   try {
     console.log("Creating new chat session...");
+
     const response = await fetch(`${CHAT_API_BASE}/chat/sessions`, {
       method: "POST",
       headers: getAuthHeaders(),
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      console.error("Failed to create chat session:", error);
-      throw new Error(error.error || "Failed to create chat session");
+      console.warn("Session API unavailable, generating local session");
+      return crypto.randomUUID();
     }
 
     const data = await response.json();
-    console.log("Chat session created:", data);
-    return data.sessionId;
+
+    return data.sessionId || crypto.randomUUID();
   } catch (error) {
-    console.error("Error creating chat session:", error);
-    throw error;
+    console.warn("Session API error, generating local session");
+    return crypto.randomUUID();
   }
 };
 
 export const sendChatMessage = async (
   sessionId: string,
   message: string,
+  history: ChatMessage[],
 ): Promise<ApiResponse> => {
   try {
-    console.log(`Sending message to session ${sessionId}:`, message);
+    console.log(`Sending message to session ${sessionId}`);
+
     const response = await fetch(
       `${CHAT_API_BASE}/chat/sessions/${sessionId}/messages`,
       {
         method: "POST",
         headers: getAuthHeaders(),
-        body: JSON.stringify({ message }),
+        body: JSON.stringify({
+          message,
+          history,
+        }),
       },
     );
 
     if (!response.ok) {
-      const error = await response.json();
-      console.error("Failed to send message:", error);
-      throw new Error(error.error || "Failed to send message");
+      const text = await response.text();
+      console.error("Chat API error:", text);
+
+      throw new Error("Failed to send message");
     }
 
     const data = await response.json();
-    console.log("Message sent successfully:", data);
+
     return data;
   } catch (error) {
-    console.error("Error sending chat message:", error);
-    throw error;
+    console.error("Chat error:", error);
+
+    return {
+      response:
+        "I'm having trouble responding right now. Please try again shortly.",
+      metadata: {
+        technique: "supportive",
+        goal: "Provide support",
+        progress: [],
+      },
+    };
   }
 };
 
@@ -108,7 +124,6 @@ export const getChatHistory = async (
   sessionId: string,
 ): Promise<ChatMessage[]> => {
   try {
-    console.log(`Fetching chat history for session ${sessionId}`);
     const response = await fetch(
       `${CHAT_API_BASE}/chat/sessions/${sessionId}/history`,
       {
@@ -117,65 +132,46 @@ export const getChatHistory = async (
     );
 
     if (!response.ok) {
-      const error = await response.json();
-      console.error("Failed to fetch chat history:", error);
-      throw new Error(error.error || "Failed to fetch chat history");
+      return [];
     }
 
     const data = await response.json();
-    console.log("Received chat history:", data);
 
-    if (!Array.isArray(data)) {
-      console.error("Invalid chat history format:", data);
-      throw new Error("Invalid chat history format");
-    }
+    if (!Array.isArray(data)) return [];
 
-    // Ensure each message has the correct format
     return data.map((msg: any) => ({
       role: msg.role,
       content: msg.content,
       timestamp: new Date(msg.timestamp),
       metadata: msg.metadata,
     }));
-  } catch (error) {
-    console.error("Error fetching chat history:", error);
-    throw error;
+  } catch {
+    return [];
   }
 };
 
 export const getAllChatSessions = async (): Promise<ChatSession[]> => {
   try {
-    console.log("Fetching all chat sessions...");
     const response = await fetch(`${CHAT_API_BASE}/chat/sessions`, {
       headers: getAuthHeaders(),
     });
 
-    if (!response.ok) {
-      const error = await response.json();
-      console.error("Failed to fetch chat sessions:", error);
-      throw new Error(error.error || "Failed to fetch chat sessions");
-    }
+    if (!response.ok) return [];
 
     const data = await response.json();
-    console.log("Received chat sessions:", data);
 
-    return data.map((session: any) => {
-      // Ensure dates are valid
-      const createdAt = new Date(session.createdAt || Date.now());
-      const updatedAt = new Date(session.updatedAt || Date.now());
+    if (!Array.isArray(data)) return [];
 
-      return {
-        ...session,
-        createdAt: isNaN(createdAt.getTime()) ? new Date() : createdAt,
-        updatedAt: isNaN(updatedAt.getTime()) ? new Date() : updatedAt,
-        messages: (session.messages || []).map((msg: any) => ({
-          ...msg,
-          timestamp: new Date(msg.timestamp || Date.now()),
-        })),
-      };
-    });
-  } catch (error) {
-    console.error("Error fetching chat sessions:", error);
-    throw error;
+    return data.map((session: any) => ({
+      ...session,
+      createdAt: new Date(session.createdAt || Date.now()),
+      updatedAt: new Date(session.updatedAt || Date.now()),
+      messages: (session.messages || []).map((msg: any) => ({
+        ...msg,
+        timestamp: new Date(msg.timestamp || Date.now()),
+      })),
+    }));
+  } catch {
+    return [];
   }
 };

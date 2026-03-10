@@ -4,7 +4,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { logger } from "../utils/logger";
 
 // 🔐 Initialize Gemini (NO hardcoded key)
-const apiKey = process.env.GEMINI_API_KEY;
+const apiKey = "AIzaSyBpvoOQYVNKFCKsNZj_aRW7PINRW5QjC4g";
 if (!apiKey) {
   throw new Error("GEMINI_API_KEY not defined");
 }
