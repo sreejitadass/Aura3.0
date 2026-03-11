@@ -11,7 +11,7 @@ export async function logActivity(
   const token = localStorage.getItem("token");
   if (!token) throw new Error("Not authenticated");
 
-  const response = await fetch("/api/activity", {
+  const response = await fetch("http://localhost:3001/api/activity", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -23,6 +23,22 @@ export async function logActivity(
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.message || "Failed to log activity");
+  }
+
+  return response.json();
+}
+
+export async function getActivityStats() {
+  const token = localStorage.getItem("token");
+
+  const response = await fetch("http://localhost:3001/api/activity/stats", {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch activity stats");
   }
 
   return response.json();

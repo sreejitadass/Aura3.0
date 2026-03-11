@@ -21,8 +21,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 // import { useToast } from "@/components/ui/use-toast";
-// import { useSession } from "@/lib/contexts/session-context";
-// import { logActivity } from "@/lib/api/activity";
+import { useSession } from "@/lib/contexts/session-context";
+import { logActivity } from "@/lib/api/activity";
 
 interface ActivityLoggerProps {
   open: boolean;
@@ -46,21 +46,40 @@ export function ActivityLogger({ open, onOpenChange }: ActivityLoggerProps) {
   const [duration, setDuration] = useState("");
   const [description, setDescription] = useState("");
   //   const { toast } = useToast();
-  //   const { user, isAuthenticated, loading } = useSession();
+  const { user, isAuthenticated, loading } = useSession();
 
   const handleSubmit = async (e: React.FormEvent) => {
-    setTimeout(() => {
-      console.log({ type, name, duration, description });
+    e.preventDefault();
+
+    if (!isAuthenticated || !user) {
+      alert("Please log in to log activities.");
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+
+      await logActivity({
+        type,
+        name,
+        description,
+        duration: duration ? Number(duration) : undefined,
+      });
 
       setType("");
       setName("");
       setDuration("");
       setDescription("");
-      setIsLoading(false);
 
-      alert("Activity logged (mock)!");
+      alert("Activity logged successfully!");
+
       onOpenChange(false);
-    }, 1000);
+    } catch (error) {
+      console.error("Error logging activity:", error);
+      alert("Failed to save activity.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -119,9 +138,13 @@ export function ActivityLogger({ open, onOpenChange }: ActivityLoggerProps) {
             <Button type="button" variant="ghost">
               Cancel
             </Button>
-            <Button type="submit" disabled>
-              Save Activity
-            </Button>
+            <Button type="submit" disabled={isLoading}>
+              {isLoading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                "Save Activity"
+              )}
+            </Button>{" "}
           </div>
         </form>
       </DialogContent>

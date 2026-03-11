@@ -46,3 +46,35 @@ export const createMood = async (
     next(error);
   }
 };
+
+export const getTodayMood = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const userId = req.user?._id;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const moods = await Mood.find({
+      userId,
+      timestamp: { $gte: today },
+    });
+
+    if (!moods.length) {
+      return res.json({ moodScore: null });
+    }
+
+    const avgMood = moods.reduce((sum, m) => sum + m.score, 0) / moods.length;
+
+    const normalizedMood = avgMood / 10;
+
+    res.json({
+      moodScore: Number(normalizedMood.toFixed(1)),
+    });
+  } catch (error) {
+    next(error);
+  }
+};

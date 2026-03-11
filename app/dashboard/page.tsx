@@ -33,15 +33,54 @@ import { useSession } from "@/lib/contexts/session-context";
 import { MoodForm } from "@/components/mood/mood-form";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+import { getActivityStats } from "@/lib/api/activity";
+import { getTodayMood } from "@/lib/api/mood";
 
 export default function DashboardPage() {
   const router = useRouter();
   const { user } = useSession();
 
+  const [currentTime, setCurrentTime] = useState(new Date());
+  const [isSavingMood, setIsSavingMood] = useState(false);
+  const [showMoodModal, setShowMoodModal] = useState(false);
+  const [showActivityLogger, setShowActivityLogger] = useState(false);
+  const [activityStats, setActivityStats] = useState({
+    totalActivities: 0,
+    todayActivities: 0,
+    totalDuration: 0,
+  });
+  const [moodScore, setMoodScore] = useState<number | null>(null);
+
+  useEffect(() => {
+    async function loadStats() {
+      try {
+        const stats = await getActivityStats();
+        setActivityStats(stats);
+      } catch (error) {
+        console.error("Failed to load activity stats", error);
+      }
+    }
+
+    loadStats();
+  }, []);
+
+  useEffect(() => {
+    async function loadMood() {
+      try {
+        const data = await getTodayMood();
+        setMoodScore(data.moodScore);
+      } catch (error) {
+        console.error("Failed to load mood", error);
+      }
+    }
+
+    loadMood();
+  }, []);
+
   const wellnessStats = [
     {
       title: "Mood Score",
-      value: "No data",
+      value: moodScore ? `${moodScore}/10` : "No data",
       icon: Brain,
       color: "text-purple-500",
       bgColor: "bg-purple-500/10",
@@ -49,11 +88,11 @@ export default function DashboardPage() {
     },
     {
       title: "Completion Rate",
-      value: "100%",
+      value: activityStats.todayActivities,
       icon: Trophy,
       color: "text-yellow-500",
       bgColor: "bg-yellow-500/10",
-      description: "Perfect completion rate",
+      description: "Activities today",
     },
     {
       title: "Therapy Sessions",
@@ -65,18 +104,13 @@ export default function DashboardPage() {
     },
     {
       title: "Total Activities",
-      value: "0",
+      value: activityStats.totalActivities,
       icon: Activity,
       color: "text-blue-500",
       bgColor: "bg-blue-500/10",
-      description: "Planned for today",
+      description: "All activities logged",
     },
   ];
-
-  const [currentTime, setCurrentTime] = useState(new Date());
-  const [isSavingMood, setIsSavingMood] = useState(false);
-  const [showMoodModal, setShowMoodModal] = useState(false);
-  const [showActivityLogger, setShowActivityLogger] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => {

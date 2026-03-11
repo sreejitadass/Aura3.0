@@ -51,3 +51,46 @@ export const logActivity = async (
     next(error);
   }
 };
+
+// Get activity statistics for dashboard
+export const getActivityStats = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const userId = req.user?._id;
+
+    if (!userId) {
+      return res.status(401).json({ message: "User not authenticated" });
+    }
+
+    // Total activities
+    const totalActivities = await Activity.countDocuments({ userId });
+
+    // Activities today
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const todayActivities = await Activity.countDocuments({
+      userId,
+      timestamp: { $gte: today },
+    });
+
+    // Total duration of activities
+    const durationAgg = await Activity.aggregate([
+      { $match: { userId } },
+      { $group: { _id: null, totalDuration: { $sum: "$duration" } } },
+    ]);
+
+    const totalDuration = durationAgg[0]?.totalDuration || 0;
+
+    res.json({
+      totalActivities,
+      todayActivities,
+      totalDuration,
+    });
+  } catch (error) {
+    next(error);
+  }
+};

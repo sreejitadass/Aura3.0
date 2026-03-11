@@ -88,3 +88,21 @@ export async function getMoodStats(
 
   return response.json();
 }
+
+export async function getTodayMood(): Promise<{ moodScore: number | null }> {
+  const token = localStorage.getItem("token");
+  if (!token) throw new Error("Not authenticated");
+
+  const response = await fetch("http://localhost:3001/api/mood/today", {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || "Failed to fetch today's mood");
+  }
+
+  return response.json();
+}
