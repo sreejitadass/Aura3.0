@@ -27,6 +27,14 @@ import {
   Heart,
   BrainCircuit,
 } from "lucide-react";
+import {
+  LineChart,
+  Line,
+  ResponsiveContainer,
+  XAxis,
+  Tooltip,
+  CartesianGrid,
+} from "recharts";
 import { AnxietyGames } from "@/components/games/anxiety-games";
 import { ActivityLogger } from "@/components/activities/activity-logger";
 import { useSession } from "@/lib/contexts/session-context";
@@ -34,7 +42,7 @@ import { MoodForm } from "@/components/mood/mood-form";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { getActivityStats } from "@/lib/api/activity";
-import { getTodayMood } from "@/lib/api/mood";
+import { getTodayMood, getMoodHistory } from "@/lib/api/mood";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -50,6 +58,7 @@ export default function DashboardPage() {
     totalDuration: 0,
   });
   const [moodScore, setMoodScore] = useState<number | null>(null);
+  const [weeklyMood, setWeeklyMood] = useState<any[]>([]);
 
   useEffect(() => {
     async function loadStats() {
@@ -75,6 +84,27 @@ export default function DashboardPage() {
     }
 
     loadMood();
+  }, []);
+
+  useEffect(() => {
+    async function loadWeeklyMood() {
+      try {
+        const result = await getMoodHistory({ limit: 7 });
+
+        const formatted = result.data.map((m: any) => ({
+          date: new Date(m.timestamp).toLocaleDateString("en-US", {
+            weekday: "short",
+          }),
+          mood: m.score / 10,
+        }));
+
+        setWeeklyMood(formatted);
+      } catch (error) {
+        console.error("Failed to load weekly mood", error);
+      }
+    }
+
+    loadWeeklyMood();
   }, []);
 
   const wellnessStats = [
@@ -311,6 +341,36 @@ export default function DashboardPage() {
                 {/* <div className="mt-4 text-xs text-muted-foreground text-right">
                   Last updated: {format(dailyStats.lastUpdated, "h:mm a")}
                 </div> */}
+              </CardContent>
+            </Card>
+
+            <Card className="border-primary/10">
+              <CardHeader>
+                <CardTitle>Weekly Mood Trend</CardTitle>
+                <CardDescription>Last 7 days</CardDescription>
+              </CardHeader>
+
+              <CardContent className="h-[200px]">
+                {weeklyMood.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    No mood data yet
+                  </p>
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={weeklyMood}>
+                      <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+                      <XAxis dataKey="date" />
+                      <Tooltip />
+                      <Line
+                        type="monotone"
+                        dataKey="mood"
+                        stroke="#8b5cf6"
+                        strokeWidth={3}
+                        dot={{ r: 4 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                )}
               </CardContent>
             </Card>
             {/* Insights Card */}

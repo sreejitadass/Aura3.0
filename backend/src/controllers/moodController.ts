@@ -78,3 +78,29 @@ export const getTodayMood = async (
     next(error);
   }
 };
+
+export const getMoodHistory = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?._id;
+
+    if (!userId) {
+      return res.status(401).json({ message: "User not authenticated" });
+    }
+
+    const limit = Number(req.query.limit) || 7;
+
+    const moods = await Mood.find({ userId })
+      .sort({ timestamp: -1 })
+      .limit(limit);
+
+    res.json({
+      success: true,
+      data: moods,
+    });
+  } catch (error) {
+    console.error("Error fetching mood history:", error);
+    res.status(500).json({
+      message: "Failed to fetch mood history",
+    });
+  }
+};

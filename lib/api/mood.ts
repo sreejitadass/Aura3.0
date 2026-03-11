@@ -52,15 +52,19 @@ export async function getMoodHistory(params?: {
   if (params?.endDate) queryParams.append("endDate", params.endDate);
   if (params?.limit) queryParams.append("limit", params.limit.toString());
 
-  const response = await fetch(`/api/mood/history?${queryParams.toString()}`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
+  const response = await fetch(
+    `http://localhost:3001/api/mood/history?${queryParams.toString()}`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
     },
-  });
+  );
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || "Failed to fetch mood history");
+    const text = await response.text();
+    console.error(text);
+    throw new Error("Failed to fetch mood history");
   }
 
   return response.json();
@@ -105,4 +109,33 @@ export async function getTodayMood(): Promise<{ moodScore: number | null }> {
   }
 
   return response.json();
+}
+
+export async function getWeeklyMood() {
+  const token = localStorage.getItem("token");
+  if (!token) throw new Error("Not authenticated");
+
+  const response = await fetch(
+    "http://localhost:3001/api/mood/history?limit=7",
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    },
+  );
+
+  if (!response.ok) {
+    const text = await response.text();
+    console.error("Server response:", text);
+    throw new Error("Failed to fetch weekly mood");
+  }
+
+  const data = await response.json();
+
+  return data.data.map((m: any) => ({
+    date: new Date(m.timestamp).toLocaleDateString("en-US", {
+      weekday: "short",
+    }),
+    mood: m.score / 10,
+  }));
 }
