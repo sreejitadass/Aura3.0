@@ -1,36 +1,92 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🧠 Aura3.0 - AI Therapist & Mental Wellness Platform
 
-## Getting Started
+AI Therapist is a full-stack mental wellness platform that helps users monitor their emotional wellbeing, engage in supportive AI conversations, and track wellness activities.
 
-First, run the development server:
+The platform combines **AI-assisted therapy conversations**, **mood tracking**, and **wellness activity logging** to provide users with a structured and supportive mental health companion.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+---
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+# ✨ Features
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 🤖 AI Therapy Chat
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- Conversational AI therapist
+- Context-aware responses
+- Session-based chat history
+- Empathetic mental wellness support
 
-## Learn More
+## 📊 Mood Tracking
 
-To learn more about Next.js, take a look at the following resources:
+- Log daily mood scores
+- Optional notes for emotional context
+- Dashboard displays **average mood for the day**
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 🧘 Wellness Activity Logging
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Users can log activities such as:
 
-## Deploy on Vercel
+- Meditation
+- Exercise
+- Walking
+- Reading
+- Journaling
+- Therapy sessions
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Each activity records:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- duration
+- type
+- timestamp
+- optional description
+
+---
+
+## 📈 Dashboard Analytics
+
+The dashboard displays:
+
+- Today's mood score
+- Total wellness activities
+- Activities completed today
+- Interactive wellness tools
+
+---
+
+## 🎮 Anxiety Relief Tools
+
+Includes interactive activities such as:
+
+- Breathing exercises
+- Zen garden
+- Mindfulness forest
+- Ocean wave breathing
+
+These tools help users regulate stress and anxiety.
+
+---
+
+# 🖥️ Tech Stack
+
+### Frontend
+
+- Next.js
+- React
+- TypeScript
+- TailwindCSS
+- Framer Motion
+- shadcn/ui
+
+### Backend
+
+- Node.js
+- Express.js
+- MongoDB
+- Mongoose
+- JWT Authentication
+
+### AI Layer
+
+- Local LLM (Llama 3.2 via Ollama)
+- Context-aware prompts for supportive responses
+
+---
