@@ -12,34 +12,91 @@ export async function POST(
       return NextResponse.json({ error: "Message required" }, { status: 400 });
     }
 
-    // Convert chat history into text
+    const authHeader = req.headers.get("authorization") || "";
+
+    // -------------------------
+    // Retrieve context (RAG step)
+    // -------------------------
+
+    let moodContext = "No recent mood data available.";
+    let activityContext = "No recent activities logged.";
+
+    try {
+      const moodRes = await fetch(
+        "http://localhost:3001/api/mood/history?limit=5",
+        { headers: { Authorization: authHeader } },
+      );
+
+      if (moodRes.ok) {
+        const moodData = await moodRes.json();
+
+        moodContext = moodData.data
+          .map((m: any) => {
+            const date = new Date(m.timestamp).toLocaleDateString();
+            const score = m.score > 10 ? m.score / 10 : m.score;
+            return `${date}: Mood ${score}/10`;
+          })
+          .join("\n");
+      }
+    } catch {}
+
+    try {
+      const activityRes = await fetch(
+        "http://localhost:3001/api/activity/history?limit=5",
+        { headers: { Authorization: authHeader } },
+      );
+
+      if (activityRes.ok) {
+        const activityData = await activityRes.json();
+
+        activityContext = activityData.data
+          .map((a: any) => `${a.name} (${a.type}) for ${a.duration || 0} mins`)
+          .join("\n");
+      }
+    } catch {}
+
+    // -------------------------
+    // Convert chat history
+    // -------------------------
+
     const formattedHistory = history
-      .slice(-10) // keep last 10 messages
+      .slice(-10)
       .map((m: any) => `${m.role === "user" ? "User" : "AI"}: ${m.content}`)
       .join("\n");
 
+    // -------------------------
+    // RAG-Enhanced Prompt
+    // -------------------------
+
     const prompt = `
-You are an empathetic AI therapist designed to support users emotionally.
+You are Aura, an empathetic AI therapist designed to support users emotionally.
 
-Your goals:
-- listen carefully
-- validate the user's feelings
-- ask gentle reflective questions
-- encourage healthy coping strategies
+User context:
+Recent mood history:
+${moodContext}
 
-Rules:
-- respond in a calm and supportive tone
-- avoid judgement
-- do not diagnose medical conditions
-- keep responses 2-5 sentences
-- ask thoughtful follow-up questions when appropriate
+Recent wellness activities:
+${activityContext}
 
 Conversation so far:
 ${formattedHistory}
 
-User: ${message}
+User message:
+${message}
+
+Guidelines:
+- acknowledge and validate the user's feelings
+- provide 2-3 practical coping suggestions when appropriate
+- only ask ONE reflective follow-up question if it helps the conversation
+- avoid asking too many questions
+- never judge or diagnose medical conditions
+- keep responses concise (3–5 sentences)
 AI:
 `;
+
+    // -------------------------
+    // Call Llama
+    // -------------------------
 
     const response = await fetch("http://localhost:11434/api/generate", {
       method: "POST",

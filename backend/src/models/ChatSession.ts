@@ -4,14 +4,7 @@ export interface IChatMessage {
   role: "user" | "assistant";
   content: string;
   timestamp: Date;
-  metadata?: {
-    analysis?: any;
-    currentGoal?: string | null;
-    progress?: {
-      emotionalState?: string;
-      riskLevel?: number;
-    };
-  };
+  embedding?: number[];
 }
 
 export interface IChatSession extends Document {
@@ -27,13 +20,10 @@ const chatMessageSchema = new Schema<IChatMessage>({
   role: { type: String, required: true, enum: ["user", "assistant"] },
   content: { type: String, required: true },
   timestamp: { type: Date, required: true },
-  metadata: {
-    analysis: Schema.Types.Mixed,
-    currentGoal: String,
-    progress: {
-      emotionalState: String,
-      riskLevel: Number,
-    },
+
+  embedding: {
+    type: [Number],
+    required: false,
   },
 });
 
