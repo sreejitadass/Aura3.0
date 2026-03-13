@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 // -------------------------
-// Generate embedding using Ollama
+// Helper: generate embedding using Ollama
 // -------------------------
 async function generateEmbedding(text: string) {
   const res = await fetch("http://localhost:11434/api/embeddings", {
@@ -20,7 +20,7 @@ async function generateEmbedding(text: string) {
 }
 
 // -------------------------
-// Cosine similarity helper
+// Helper: cosine similarity
 // -------------------------
 function cosineSimilarity(a: number[], b: number[]) {
   const dot = a.reduce((sum, val, i) => sum + val * b[i], 0);
@@ -44,7 +44,7 @@ export async function POST(
     const authHeader = req.headers.get("authorization") || "";
 
     // -------------------------
-    // Generate embedding
+    // Generate embedding for user message
     // -------------------------
 
     const userEmbedding = await generateEmbedding(message);
@@ -70,7 +70,52 @@ export async function POST(
         : "No relevant past memories.";
 
     // -------------------------
-    // Format conversation history
+    // Retrieve mood context
+    // -------------------------
+
+    let moodContext = "No recent mood data available.";
+    let activityContext = "No recent activities logged.";
+
+    try {
+      const moodRes = await fetch(
+        "http://localhost:3001/api/mood/history?limit=5",
+        { headers: { Authorization: authHeader } },
+      );
+
+      if (moodRes.ok) {
+        const moodData = await moodRes.json();
+
+        moodContext = moodData.data
+          .map((m: any) => {
+            const date = new Date(m.timestamp).toLocaleDateString();
+            const score = m.score > 10 ? m.score / 10 : m.score;
+            return `${date}: Mood ${score}/10`;
+          })
+          .join("\n");
+      }
+    } catch {}
+
+    // -------------------------
+    // Retrieve activity context
+    // -------------------------
+
+    try {
+      const activityRes = await fetch(
+        "http://localhost:3001/api/activity/history?limit=5",
+        { headers: { Authorization: authHeader } },
+      );
+
+      if (activityRes.ok) {
+        const activityData = await activityRes.json();
+
+        activityContext = activityData.data
+          .map((a: any) => `${a.name} (${a.type}) for ${a.duration || 0} mins`)
+          .join("\n");
+      }
+    } catch {}
+
+    // -------------------------
+    // Convert chat history
     // -------------------------
 
     const formattedHistory = history
@@ -79,11 +124,19 @@ export async function POST(
       .join("\n");
 
     // -------------------------
-    // Build prompt
+    // Build RAG + Memory prompt
     // -------------------------
 
     const prompt = `
 You are Aura, an empathetic AI therapist designed to support users emotionally.
+
+User emotional context:
+
+Recent mood history:
+${moodContext}
+
+Recent wellness activities:
+${activityContext}
 
 Relevant past memories:
 ${memoryContext}
@@ -95,18 +148,18 @@ User message:
 ${message}
 
 Guidelines:
-- validate feelings
-- provide 2-3 practical coping suggestions
+- acknowledge and validate the user's feelings
+- provide 2-3 practical coping suggestions when appropriate
 - ask at most ONE reflective follow-up question
-- avoid judgement
-- do not diagnose medical conditions
-- keep response concise (3–5 sentences)
+- avoid asking too many questions
+- never judge or diagnose medical conditions
+- keep responses concise (3–5 sentences)
 
 AI:
 `;
 
     // -------------------------
-    // Call Ollama (Llama 3.2)
+    // Call Llama
     // -------------------------
 
     const response = await fetch("http://localhost:11434/api/generate", {
@@ -123,46 +176,18 @@ AI:
 
     const data = await response.json();
 
-    const aiResponse =
+    const text =
       data.response ||
       "I'm here to listen. Tell me more about what you're experiencing.";
 
-    // -------------------------
-    // Send message to backend to save
-    // -------------------------
-
-    try {
-      await fetch(
-        `http://localhost:3001/api/chat/sessions/${sessionId}/messages`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: authHeader,
-          },
-          body: JSON.stringify({
-            message,
-            response: aiResponse,
-            embedding: userEmbedding,
-          }),
-        },
-      );
-    } catch (err) {
-      console.error("Failed to save message to backend:", err);
-    }
-
-    // -------------------------
-    // Return AI response
-    // -------------------------
-
     return NextResponse.json({
-      response: aiResponse,
-      embedding: userEmbedding,
+      response: text,
       metadata: {
         technique: "supportive",
         goal: "Provide emotional support",
         progress: [],
       },
+      embedding: userEmbedding, // return embedding so frontend/backend can store it
     });
   } catch (error) {
     console.error("Chat error:", error);

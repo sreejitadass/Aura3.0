@@ -3,6 +3,7 @@ import { auth } from "../middleware/auth";
 import {
   logActivity,
   getActivityStats,
+  getActivityHistory,
 } from "../controllers/activityController";
 
 const router = express.Router();
@@ -15,5 +16,8 @@ router.post("/", logActivity);
 
 // Dashboard stats
 router.get("/stats", getActivityStats);
+
+// Get activity history
+router.get("/history", getActivityHistory);
 
 export default router;
