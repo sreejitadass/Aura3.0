@@ -15,6 +15,7 @@ export const createChatSession = async (req: Request, res: Response) => {
     }
 
     const userId = new Types.ObjectId(req.user.id);
+
     const user = await User.findById(userId);
 
     if (!user) {
@@ -45,15 +46,13 @@ export const createChatSession = async (req: Request, res: Response) => {
   }
 };
 
-// Send message
+// Save chat message
 export const sendMessage = async (req: Request, res: Response) => {
   try {
     const { sessionId } = req.params;
-    const { message } = req.body;
+    const { message, response, embedding } = req.body;
 
     const userId = new Types.ObjectId(req.user.id);
-
-    logger.info("Processing message:", { sessionId, message });
 
     const session = await ChatSession.findOne({ sessionId });
 
@@ -70,79 +69,24 @@ export const sendMessage = async (req: Request, res: Response) => {
       role: "user",
       content: message,
       timestamp: new Date(),
+      embedding,
     });
 
-    // Prepare conversation history
-    const history = session.messages
-      .slice(-10)
-      .map((m) => `${m.role === "user" ? "User" : "AI"}: ${m.content}`)
-      .join("\n");
-
-    const prompt = `
-You are a calm, empathetic AI therapist.
-
-Your goals:
-- listen carefully
-- validate the user's feelings
-- ask gentle reflective questions (only when required)
-- encourage healthy coping strategies always as tips
-
-Conversation so far:
-${history}
-
-User: ${message}
-AI:
-`;
-
-    // Call Ollama
-    const response = await fetch("http://localhost:11434/api/generate", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "llama3.2",
-        prompt,
-        stream: false,
-      }),
-    });
-
-    const data = await response.json();
-
-    const aiResponse =
-      data.response ||
-      "I'm here to listen. Tell me more about how you're feeling.";
-
-    logger.info("AI response:", aiResponse);
-
-    // Save AI message
+    // Save AI response
     session.messages.push({
       role: "assistant",
-      content: aiResponse,
+      content: response,
       timestamp: new Date(),
-      metadata: {
-        progress: {
-          emotionalState: "unknown",
-          riskLevel: 0,
-        },
-      },
     });
 
     await session.save();
 
-    res.json({
-      response: aiResponse,
-      metadata: {
-        technique: "supportive",
-        goal: "Provide emotional support",
-        progress: [],
-      },
-    });
+    res.json({ success: true });
   } catch (error) {
-    logger.error("Error in sendMessage:", error);
+    logger.error("Error saving message:", error);
 
     res.status(500).json({
-      message: "Error processing message",
+      message: "Error saving message",
     });
   }
 };
@@ -166,11 +110,13 @@ export const getChatHistory = async (req: Request, res: Response) => {
     res.json(session.messages);
   } catch (error) {
     logger.error("Error fetching chat history:", error);
-    res.status(500).json({ message: "Error fetching chat history" });
+
+    res.status(500).json({
+      message: "Error fetching chat history",
+    });
   }
 };
 
-// Get single session
 export const getChatSession = async (req: Request, res: Response) => {
   try {
     const { sessionId } = req.params;
@@ -184,6 +130,9 @@ export const getChatSession = async (req: Request, res: Response) => {
     res.json(session);
   } catch (error) {
     logger.error("Failed to get chat session:", error);
-    res.status(500).json({ error: "Failed to get chat session" });
+
+    res.status(500).json({
+      error: "Failed to get chat session",
+    });
   }
 };
