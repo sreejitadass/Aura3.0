@@ -43,6 +43,33 @@ export async function POST(
 
     const authHeader = req.headers.get("authorization") || "";
 
+    let userContext = "No user profile available.";
+
+    try {
+      const userRes = await fetch("http://localhost:3001/auth/me", {
+        headers: { Authorization: authHeader },
+      });
+
+      if (userRes.ok) {
+        const userData = await userRes.json();
+        const profile = userData.user?.profile;
+
+        if (profile) {
+          userContext = `
+Age: ${profile.age || "unknown"}
+Profession: ${profile.profession || "unknown"}
+Lifestyle: ${profile.lifestyle || "unknown"}
+Sleep: ${profile.sleepHours || "unknown"} hours
+Stress Level: ${profile.stressLevel || "unknown"}/10
+Goal: ${profile.primaryGoal || "not specified"}
+Personal Note: ${profile.customNote || "none"}
+`;
+        }
+      }
+    } catch (err) {
+      console.error("Failed to fetch user profile", err);
+    }
+
     // -------------------------
     // Generate embedding for user message
     // -------------------------
@@ -132,6 +159,9 @@ You are Aura, an empathetic AI therapist designed to support users emotionally.
 
 User emotional context:
 
+User profile:
+${userContext}
+
 Recent mood history:
 ${moodContext}
 
@@ -148,6 +178,11 @@ User message:
 ${message}
 
 Guidelines:
+- adapt suggestions based on user's profile
+- if student → focus on academic stress
+- if working → focus on work-life balance
+- if high stress → prioritize calming techniques
+- if low sleep → suggest rest and recovery
 - acknowledge and validate the user's feelings
 - provide 2-3 practical coping suggestions when appropriate
 - ask at most ONE reflective follow-up question

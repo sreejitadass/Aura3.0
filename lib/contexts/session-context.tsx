@@ -7,6 +7,16 @@ interface User {
   _id: string;
   name: string;
   email: string;
+
+  profile?: {
+    age?: number;
+    profession?: string;
+    lifestyle?: string;
+    sleepHours?: number;
+    stressLevel?: number;
+    primaryGoal?: string;
+    customNote?: string;
+  };
 }
 
 interface SessionContextType {

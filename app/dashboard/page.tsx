@@ -43,6 +43,7 @@ import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { getActivityStats } from "@/lib/api/activity";
 import { getTodayMood, getMoodHistory } from "@/lib/api/mood";
+import { updateUserProfile } from "@/lib/api/user";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -59,6 +60,17 @@ export default function DashboardPage() {
   });
   const [moodScore, setMoodScore] = useState<number | null>(null);
   const [weeklyMood, setWeeklyMood] = useState<any[]>([]);
+
+  const [showProfileModal, setShowProfileModal] = useState(false);
+
+  // profile fields
+  const [age, setAge] = useState("");
+  const [profession, setProfession] = useState("");
+  const [lifestyle, setLifestyle] = useState("");
+  const [sleepHours, setSleepHours] = useState("");
+  const [stressLevel, setStressLevel] = useState("");
+  const [primaryGoal, setPrimaryGoal] = useState("");
+  const [customNote, setCustomNote] = useState("");
 
   useEffect(() => {
     async function loadStats() {
@@ -106,6 +118,12 @@ export default function DashboardPage() {
 
     loadWeeklyMood();
   }, []);
+
+  useEffect(() => {
+    if (user && !user.profile) {
+      setShowProfileModal(true);
+    }
+  }, [user]);
 
   const wellnessStats = [
     {
@@ -171,6 +189,24 @@ export default function DashboardPage() {
 
   const handleStartTherapy = () => {
     router.push("/therapy/new");
+  };
+
+  const handleSaveProfile = async () => {
+    try {
+      await updateUserProfile({
+        age: Number(age),
+        profession,
+        lifestyle,
+        sleepHours: Number(sleepHours),
+        stressLevel: Number(stressLevel),
+        primaryGoal,
+        customNote,
+      });
+
+      setShowProfileModal(false);
+    } catch (err) {
+      console.error("Failed to save profile", err);
+    }
   };
 
   return (
@@ -397,6 +433,71 @@ export default function DashboardPage() {
             </DialogDescription>
           </DialogHeader>
           <MoodForm onSuccess={() => setShowMoodModal(false)} />
+        </DialogContent>
+      </Dialog>
+
+      {/* Profile Modal */}
+      <Dialog open={showProfileModal} onOpenChange={setShowProfileModal}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Complete Your Profile</DialogTitle>
+            <DialogDescription>
+              Help Aura personalize your experience
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3">
+            <input
+              className="w-full border p-2 rounded"
+              placeholder="Age"
+              value={age}
+              onChange={(e) => setAge(e.target.value)}
+            />
+
+            <input
+              className="w-full border p-2 rounded"
+              placeholder="Profession"
+              value={profession}
+              onChange={(e) => setProfession(e.target.value)}
+            />
+
+            <input
+              className="w-full border p-2 rounded"
+              placeholder="Lifestyle (student / working)"
+              value={lifestyle}
+              onChange={(e) => setLifestyle(e.target.value)}
+            />
+
+            <input
+              className="w-full border p-2 rounded"
+              placeholder="Sleep hours"
+              value={sleepHours}
+              onChange={(e) => setSleepHours(e.target.value)}
+            />
+
+            <input
+              className="w-full border p-2 rounded"
+              placeholder="Stress level (1-10)"
+              value={stressLevel}
+              onChange={(e) => setStressLevel(e.target.value)}
+            />
+
+            <input
+              className="w-full border p-2 rounded"
+              placeholder="Primary goal"
+              value={primaryGoal}
+              onChange={(e) => setPrimaryGoal(e.target.value)}
+            />
+
+            <textarea
+              className="w-full border p-2 rounded"
+              placeholder="Anything you'd like to share"
+              value={customNote}
+              onChange={(e) => setCustomNote(e.target.value)}
+            />
+
+            <Button onClick={handleSaveProfile}>Save Profile</Button>
+          </div>
         </DialogContent>
       </Dialog>
 
