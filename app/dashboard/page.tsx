@@ -3,7 +3,14 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { Bell, Trophy, Brain, Activity, Loader2 } from "lucide-react";
+import {
+  Bell,
+  Trophy,
+  Brain,
+  Activity,
+  Loader2,
+  TrendingUp,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
 import {
@@ -323,6 +330,27 @@ export default function DashboardPage() {
                           <div className="font-medium text-sm">Check-in</div>
                           <div className="text-xs text-muted-foreground mt-0.5">
                             Quick wellness check
+                          </div>
+                        </div>
+                      </Button>
+
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "flex flex-col h-[120px] px-4 py-3 group/insight hover:border-primary/50",
+                          "justify-center items-center text-center",
+                          "transition-all duration-200 group-hover:translate-y-[-2px]",
+                        )}
+                        onClick={() => router.push("/insights")}
+                      >
+                        <div className="w-10 h-10 rounded-full bg-green-500/10 flex items-center justify-center mb-2">
+                          <TrendingUp className="w-5 h-5 text-green-500" />
+                        </div>
+
+                        <div>
+                          <div className="font-medium text-sm">Insights</div>
+                          <div className="text-xs text-muted-foreground mt-0.5">
+                            View mood trends
                           </div>
                         </div>
                       </Button>
