@@ -15,6 +15,7 @@ import chatRoutes from "./routes/chat";
 import moodRoutes from "./routes/mood";
 import activityRoutes from "./routes/activity";
 import userRoutes from "./routes/user";
+import journalRoutes from "./routes/journal";
 
 dotenv.config();
 
@@ -39,6 +40,7 @@ app.use("api//chat", chatRoutes);
 app.use("/api/mood", moodRoutes);
 app.use("/api/activity", activityRoutes);
 app.use("/api/user", userRoutes);
+app.use("/api/journal", journalRoutes);
 
 // Error handler
 app.use(errorHandler);

@@ -24,44 +24,133 @@ export default function InsightsPage() {
   const [avgMood, setAvgMood] = useState<number | null>(null);
   const [trend, setTrend] = useState("");
   const [aiInsight, setAiInsight] = useState("");
+  const [journalEntries, setJournalEntries] = useState<any[]>([]);
+  const [tagStats, setTagStats] = useState<{ [key: string]: number }>({});
+  const [journalInsight, setJournalInsight] = useState("");
 
   useEffect(() => {
     async function loadInsights() {
-      try {
-        const res = await getMoodHistory({ limit: 7 });
+      const token = localStorage.getItem("token");
+      if (!token) return;
 
-        const normalized = res.data.map((m: any) =>
+      try {
+        // -------------------------
+        // MOOD DATA
+        // -------------------------
+        const moodRes = await fetch(
+          "http://localhost:3001/api/mood/history?limit=7",
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          },
+        );
+
+        const moodData = await moodRes.json();
+
+        const normalized = moodData.data.map((m: any) =>
           m.score > 10 ? m.score / 10 : m.score,
         );
 
         setMoods(normalized);
 
-        if (normalized.length === 0) return;
+        if (normalized.length > 0) {
+          const chart = normalized.map((value: number, index: number) => ({
+            day: `Day ${index + 1}`,
+            mood: value,
+          }));
 
-        // Chart
-        const chart = normalized.map((value: number, index: number) => ({
-          day: `Day ${index + 1}`,
-          mood: value,
-        }));
+          setChartData(chart);
 
-        setChartData(chart);
+          const avg =
+            normalized.reduce((sum: number, val: number) => sum + val, 0) /
+            normalized.length;
 
-        // Average
-        const avg =
-          normalized.reduce((sum: number, val: number) => sum + val, 0) /
-          normalized.length;
+          setAvgMood(avg);
 
-        setAvgMood(avg);
+          const trendValue =
+            normalized[normalized.length - 1] > normalized[0]
+              ? "Improving 📈"
+              : "Declining 📉";
 
-        // Trend
-        const trendValue =
-          normalized[normalized.length - 1] > normalized[0]
-            ? "Improving 📈"
-            : "Declining 📉";
+          setTrend(trendValue);
+        }
 
-        setTrend(trendValue);
+        // -------------------------
+        // ACTIVITY DATA
+        // -------------------------
+        let activities: string[] = [];
 
-        // 🔥 AI Insight Call
+        try {
+          const actRes = await fetch(
+            "http://localhost:3001/api/activity/history?limit=5",
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            },
+          );
+
+          const actData = await actRes.json();
+          activities = actData.data.map((a: any) => a.name);
+        } catch (err) {
+          console.error("Activity fetch failed", err);
+        }
+
+        // -------------------------
+        // JOURNAL DATA
+        // -------------------------
+        let journalData: any[] = [];
+
+        try {
+          const journalRes = await fetch("http://localhost:3001/api/journal", {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
+
+          journalData = await journalRes.json();
+          setJournalEntries(journalData);
+
+          // Tag aggregation (for stats UI)
+          const counts: { [key: string]: number } = {};
+
+          journalData.forEach((entry: any) => {
+            entry.tags?.forEach((tag: string) => {
+              counts[tag] = (counts[tag] || 0) + 1;
+            });
+          });
+
+          setTagStats(counts);
+        } catch (err) {
+          console.error("Journal fetch failed", err);
+        }
+
+        // -------------------------
+        // AI JOURNAL INSIGHTS (NEW 🔥)
+        // -------------------------
+        try {
+          if (journalData.length > 0) {
+            const resJournalAI = await fetch("/api/journal/insights", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                entries: journalData,
+              }),
+            });
+
+            const journalAIData = await resJournalAI.json();
+            setJournalInsight(journalAIData.result);
+          }
+        } catch (err) {
+          console.error("Journal AI insight failed", err);
+        }
+
+        // -------------------------
+        // AI MOOD INSIGHTS
+        // -------------------------
         try {
           const resAI = await fetch("/api/insights", {
             method: "POST",
@@ -70,8 +159,8 @@ export default function InsightsPage() {
             },
             body: JSON.stringify({
               moods: normalized,
+              activities,
               profile: user?.profile || {},
-              activities: [], // optional: plug activity API later
             }),
           });
 
@@ -85,7 +174,9 @@ export default function InsightsPage() {
       }
     }
 
-    loadInsights();
+    if (user) {
+      loadInsights();
+    }
   }, [user]);
 
   return (
@@ -143,7 +234,7 @@ export default function InsightsPage() {
         <Card className="border-primary/30 bg-primary/5 shadow-md">
           <CardHeader>
             <CardTitle className="text-primary flex items-center gap-2">
-              🧠 AI Insight
+              🧠 Mood Insights
             </CardTitle>
           </CardHeader>
 
@@ -152,6 +243,20 @@ export default function InsightsPage() {
               <ReactMarkdown>
                 {aiInsight || "Generating personalized insights..."}
               </ReactMarkdown>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-purple-500/30 bg-purple-500/5 shadow-md">
+          <CardHeader>
+            <CardTitle className="text-purple-400 flex items-center gap-2">
+              📖 Journal Insights
+            </CardTitle>
+          </CardHeader>
+
+          <CardContent>
+            <div className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-line">
+              {journalInsight || "Analyzing your journal entries..."}
             </div>
           </CardContent>
         </Card>

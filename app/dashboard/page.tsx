@@ -8,7 +8,7 @@ import {
   Trophy,
   Brain,
   Activity,
-  Loader2,
+  BookOpen,
   TrendingUp,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -51,6 +51,7 @@ import { cn } from "@/lib/utils";
 import { getActivityStats } from "@/lib/api/activity";
 import { getTodayMood, getMoodHistory } from "@/lib/api/mood";
 import { updateUserProfile } from "@/lib/api/user";
+import ReactMarkdown from "react-markdown";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -67,8 +68,8 @@ export default function DashboardPage() {
   });
   const [moodScore, setMoodScore] = useState<number | null>(null);
   const [weeklyMood, setWeeklyMood] = useState<any[]>([]);
-
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [plan, setPlan] = useState("");
 
   // profile fields
   const [age, setAge] = useState("");
@@ -129,6 +130,71 @@ export default function DashboardPage() {
   useEffect(() => {
     if (user && !user.profile) {
       setShowProfileModal(true);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    async function loadPlan() {
+      const token = localStorage.getItem("token");
+
+      if (!token) {
+        console.log("No token yet, skipping API call");
+        return;
+      }
+
+      try {
+        const moodRes = await fetch(
+          "http://localhost:3001/api/mood/history?limit=7",
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          },
+        );
+
+        const moodData = await moodRes.json();
+
+        const moods = moodData.data.map((m: any) =>
+          m.score > 10 ? m.score / 10 : m.score,
+        );
+
+        let activities: string[] = [];
+
+        try {
+          const actRes = await fetch(
+            "http://localhost:3001/api/activity/history?limit=5",
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            },
+          );
+
+          const actData = await actRes.json();
+          activities = actData.data.map((a: any) => a.name);
+        } catch {}
+
+        const res = await fetch("/api/plan", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            moods,
+            activities,
+            profile: user?.profile || {},
+          }),
+        });
+
+        const data = await res.json();
+        setPlan(data.result);
+      } catch (err) {
+        console.error("Plan load error", err);
+      }
+    }
+
+    if (user) {
+      loadPlan();
     }
   }, [user]);
 
@@ -354,6 +420,22 @@ export default function DashboardPage() {
                           </div>
                         </div>
                       </Button>
+                      <Button
+                        variant="outline"
+                        className="flex flex-col h-[120px] px-4 py-3 group"
+                        onClick={() => router.push("/journal")}
+                      >
+                        <div className="w-10 h-10 rounded-full bg-purple-500/10 flex items-center justify-center mb-2">
+                          <BookOpen className="w-5 h-5 text-purple-500" />
+                        </div>
+
+                        <div>
+                          <div className="font-medium text-sm">Journal</div>
+                          <div className="text-xs text-muted-foreground mt-0.5">
+                            Write your thoughts
+                          </div>
+                        </div>
+                      </Button>
                     </div>
                   </div>
                 </div>
@@ -376,9 +458,7 @@ export default function DashboardPage() {
                     size="icon"
                     // onClick={fetchDailyStats}
                     className="h-8 w-8"
-                  >
-                    <Loader2 className={cn("h-4 w-4", "animate-spin")} />
-                  </Button>
+                  ></Button>
                 </div>
               </CardHeader>
               <CardContent>
@@ -439,6 +519,29 @@ export default function DashboardPage() {
             </Card>
             {/* Insights Card */}
           </div>
+
+          <Card className="border-primary/30 bg-primary/5 shadow-md">
+            <CardHeader>
+              <CardTitle className="text-primary flex items-center gap-2">
+                🧠 Today’s Plan
+              </CardTitle>
+            </CardHeader>
+
+            <CardContent>
+              <div
+                className="
+        prose prose-sm dark:prose-invert max-w-none
+        [&_ul]:list-disc [&_ul]:pl-5
+        [&_li]:mb-1
+        [&_h3]:text-primary [&_h3]:font-semibold
+      "
+              >
+                <ReactMarkdown>
+                  {plan || "Generating your personalized plan..."}
+                </ReactMarkdown>
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Content Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
