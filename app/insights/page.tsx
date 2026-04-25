@@ -27,6 +27,43 @@ export default function InsightsPage() {
   const [journalEntries, setJournalEntries] = useState<any[]>([]);
   const [tagStats, setTagStats] = useState<{ [key: string]: number }>({});
   const [journalInsight, setJournalInsight] = useState("");
+  const [heatmapData, setHeatmapData] = useState<any[]>([]);
+
+  function generateHeatmap(data: any[]) {
+    const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+    const grouped: { [key: string]: number[] } = {};
+
+    data.forEach((m) => {
+      const date = new Date(m.timestamp).toDateString();
+
+      if (!grouped[date]) grouped[date] = [];
+
+      const score = m.score > 10 ? m.score / 10 : m.score;
+      grouped[date].push(score);
+    });
+
+    const result = Object.entries(grouped).map(([date, scores]) => {
+      const avg = scores.reduce((sum, val) => sum + val, 0) / scores.length;
+
+      const dayIndex = new Date(date).getDay();
+
+      return {
+        day: days[dayIndex],
+        value: Number(avg.toFixed(1)),
+        date,
+      };
+    });
+
+    return result;
+  }
+
+  function getColor(value: number) {
+    if (value >= 7) return "bg-green-400";
+    if (value >= 4) return "bg-yellow-300";
+    if (value > 0) return "bg-red-400";
+    return "bg-gray-600";
+  }
 
   useEffect(() => {
     async function loadInsights() {
@@ -38,7 +75,7 @@ export default function InsightsPage() {
         // MOOD DATA
         // -------------------------
         const moodRes = await fetch(
-          "http://localhost:3001/api/mood/history?limit=7",
+          "http://localhost:3001/api/mood/history?limit=20",
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -48,33 +85,63 @@ export default function InsightsPage() {
 
         const moodData = await moodRes.json();
 
-        const normalized = moodData.data.map((m: any) =>
-          m.score > 10 ? m.score / 10 : m.score,
-        );
+        if (!moodData.data || moodData.data.length === 0) return;
 
-        setMoods(normalized);
+        // -------------------------
+        // NORMALIZE + SORT (single source)
+        // -------------------------
+        const sorted = moodData.data
+          .map((m: any) => ({
+            ...m,
+            score: m.score > 10 ? m.score / 10 : m.score,
+          }))
+          .sort(
+            (a: any, b: any) =>
+              new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
+          );
 
-        if (normalized.length > 0) {
-          const chart = normalized.map((value: number, index: number) => ({
-            day: `Day ${index + 1}`,
-            mood: value,
-          }));
+        // -------------------------
+        // CHART
+        // -------------------------
+        const chart = sorted.map((m: any, index: number) => ({
+          day: `Entry ${index + 1}`,
+          mood: Number(m.score.toFixed(1)),
+        }));
 
-          setChartData(chart);
+        setChartData(chart);
 
-          const avg =
-            normalized.reduce((sum: number, val: number) => sum + val, 0) /
-            normalized.length;
+        // -------------------------
+        // HEATMAP
+        // -------------------------
+        const heatmap = sorted.map((m: any) => ({
+          day: new Date(m.timestamp).toLocaleDateString("en-US", {
+            weekday: "short",
+          }),
+          value: Number(m.score.toFixed(1)),
+          date: m.timestamp,
+        }));
 
-          setAvgMood(avg);
+        setHeatmapData(heatmap);
+        console.log("HEATMAP DATA:", heatmap);
 
-          const trendValue =
-            normalized[normalized.length - 1] > normalized[0]
-              ? "Improving 📈"
-              : "Declining 📉";
+        // -------------------------
+        // STATS
+        // -------------------------
+        const moodValues = sorted.map((m: any) => m.score);
+        setMoods(moodValues);
 
-          setTrend(trendValue);
-        }
+        const avg =
+          moodValues.reduce((sum: number, val: number) => sum + val, 0) /
+          moodValues.length;
+
+        setAvgMood(Number(avg.toFixed(1)));
+
+        const trendValue =
+          moodValues[moodValues.length - 1] > moodValues[0]
+            ? "Improving 📈"
+            : "Declining 📉";
+
+        setTrend(trendValue);
 
         // -------------------------
         // ACTIVITY DATA
@@ -93,9 +160,7 @@ export default function InsightsPage() {
 
           const actData = await actRes.json();
           activities = actData.data.map((a: any) => a.name);
-        } catch (err) {
-          console.error("Activity fetch failed", err);
-        }
+        } catch {}
 
         // -------------------------
         // JOURNAL DATA
@@ -112,7 +177,6 @@ export default function InsightsPage() {
           journalData = await journalRes.json();
           setJournalEntries(journalData);
 
-          // Tag aggregation (for stats UI)
           const counts: { [key: string]: number } = {};
 
           journalData.forEach((entry: any) => {
@@ -122,15 +186,13 @@ export default function InsightsPage() {
           });
 
           setTagStats(counts);
-        } catch (err) {
-          console.error("Journal fetch failed", err);
-        }
+        } catch {}
 
         // -------------------------
-        // AI JOURNAL INSIGHTS (NEW 🔥)
+        // AI JOURNAL INSIGHTS
         // -------------------------
-        try {
-          if (journalData.length > 0) {
+        if (journalData.length > 0) {
+          try {
             const resJournalAI = await fetch("/api/journal/insights", {
               method: "POST",
               headers: {
@@ -143,9 +205,7 @@ export default function InsightsPage() {
 
             const journalAIData = await resJournalAI.json();
             setJournalInsight(journalAIData.result);
-          }
-        } catch (err) {
-          console.error("Journal AI insight failed", err);
+          } catch {}
         }
 
         // -------------------------
@@ -158,7 +218,7 @@ export default function InsightsPage() {
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
-              moods: normalized,
+              moods: moodValues,
               activities,
               profile: user?.profile || {},
             }),
@@ -166,17 +226,13 @@ export default function InsightsPage() {
 
           const data = await resAI.json();
           setAiInsight(data.result);
-        } catch (err) {
-          console.error("AI insight error", err);
-        }
+        } catch {}
       } catch (err) {
         console.error("Insights error:", err);
       }
     }
 
-    if (user) {
-      loadInsights();
-    }
+    if (user) loadInsights();
   }, [user]);
 
   return (
@@ -215,22 +271,78 @@ export default function InsightsPage() {
           </Card>
         </div>
 
-        {/* Chart */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Mood Trend</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={250}>
-              <LineChart data={chartData}>
-                <XAxis dataKey="day" />
-                <YAxis domain={[0, 10]} />
-                <Tooltip />
-                <Line type="monotone" dataKey="mood" strokeWidth={2} />
-              </LineChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Line Chart */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Mood Trend</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={250}>
+                <LineChart data={chartData}>
+                  <XAxis dataKey="day" />
+                  <YAxis domain={[0, 10]} />
+                  <Tooltip />
+                  <Line type="monotone" dataKey="mood" strokeWidth={2} />
+                </LineChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+
+          {/* Heatmap */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Mood Heatmap</CardTitle>
+            </CardHeader>
+
+            <CardContent>
+              {/* Debug / info */}
+              <p className="text-xs text-muted-foreground mb-3">
+                Entries visualized: {heatmapData.length}
+              </p>
+
+              {heatmapData.length > 0 ? (
+                <div className="flex flex-wrap gap-3">
+                  {heatmapData.map((item, i) => (
+                    <div key={i} className="flex flex-col items-center">
+                      {/* Colored square */}
+                      <div
+                        className={`w-10 h-10 rounded-lg ${getColor(item.value)} 
+              border border-gray-700 hover:scale-105 transition`}
+                        title={`${item.date} • ${item.value}/10`}
+                      />
+
+                      {/* Day label */}
+                      <span className="text-xs mt-1 text-muted-foreground">
+                        {item.day}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-sm text-muted-foreground">
+                  No mood data available yet.
+                </div>
+              )}
+
+              {/* Legend */}
+              <div className="flex items-center gap-4 mt-4 text-xs text-muted-foreground">
+                <div className="flex items-center gap-1">
+                  <div className="w-3 h-3 bg-red-400 rounded" />
+                  Low
+                </div>
+                <div className="flex items-center gap-1">
+                  <div className="w-3 h-3 bg-yellow-300 rounded" />
+                  Medium
+                </div>
+                <div className="flex items-center gap-1">
+                  <div className="w-3 h-3 bg-green-400 rounded" />
+                  High
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
         {/* AI Insight */}
         <Card className="border-primary/30 bg-primary/5 shadow-md">
