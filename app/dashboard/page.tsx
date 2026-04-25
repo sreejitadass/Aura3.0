@@ -109,14 +109,36 @@ export default function DashboardPage() {
   useEffect(() => {
     async function loadWeeklyMood() {
       try {
-        const result = await getMoodHistory({ limit: 7 });
+        const result = await getMoodHistory({ limit: 20 }); // increase range
 
-        const formatted = result.data.map((m: any) => ({
-          date: new Date(m.timestamp).toLocaleDateString("en-US", {
-            weekday: "short",
-          }),
-          mood: m.score / 10,
-        }));
+        // -------------------------
+        // GROUP BY DAY
+        // -------------------------
+        const grouped: { [key: string]: number[] } = {};
+
+        result.data.forEach((m: any) => {
+          const date = new Date(m.timestamp).toDateString();
+
+          if (!grouped[date]) {
+            grouped[date] = [];
+          }
+
+          grouped[date].push(m.score / 10);
+        });
+
+        // -------------------------
+        // AVERAGE PER DAY
+        // -------------------------
+        const formatted = Object.entries(grouped).map(([date, scores]) => {
+          const avg = scores.reduce((sum, val) => sum + val, 0) / scores.length;
+
+          return {
+            date: new Date(date).toLocaleDateString("en-US", {
+              weekday: "short",
+            }),
+            mood: Number(avg.toFixed(1)),
+          };
+        });
 
         setWeeklyMood(formatted);
       } catch (error) {

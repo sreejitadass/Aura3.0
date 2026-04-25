@@ -184,7 +184,9 @@ export default function InsightsPage() {
       <Container className="pt-24 pb-8 space-y-6">
         {/* Header */}
         <div className="space-y-2">
-          <h1 className="text-3xl font-bold text-foreground">Mood Insights</h1>
+          <h1 className="text-3xl font-bold text-foreground">
+            Well-being Insights
+          </h1>
           <p className="text-muted-foreground">
             AI-powered analysis of your emotional trends
           </p>
