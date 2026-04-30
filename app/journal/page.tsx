@@ -2,12 +2,19 @@
 
 import { useEffect, useState } from "react";
 import { Trash2, Pencil } from "lucide-react";
+import { useSearchParams } from "next/navigation";
 
 export default function JournalPage() {
+  const searchParams = useSearchParams();
+  const selectedDate = searchParams.get("date");
+
   const [content, setContent] = useState("");
   const [entries, setEntries] = useState<any[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editContent, setEditContent] = useState("");
+  const [entryDate, setEntryDate] = useState(
+    selectedDate || new Date().toISOString().split("T")[0],
+  );
 
   const token =
     typeof window !== "undefined" ? localStorage.getItem("token") : null;
@@ -60,7 +67,10 @@ export default function JournalPage() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ content }),
+        body: JSON.stringify({
+          content,
+          createdAt: entryDate,
+        }),
       });
 
       const newEntry = await res.json();
@@ -123,6 +133,12 @@ export default function JournalPage() {
 
         {/* Editor */}
         <div className="border rounded-xl p-4 bg-card">
+          <input
+            type="date"
+            value={entryDate}
+            onChange={(e) => setEntryDate(e.target.value)}
+            className="mb-3 px-2 py-1 border rounded"
+          />
           <textarea
             placeholder="Write your thoughts..."
             className="w-full h-32 bg-transparent outline-none resize-none"
